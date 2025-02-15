@@ -1,6 +1,7 @@
-from utils import load_jsonl, retrieve_top_k_similar_docs
+from utils.utils import load_jsonl, retrieve_top_k_similar_docs
 from dotenv import load_dotenv
 import os
+import argparse
 from openai import OpenAI
 from pinecone import Pinecone
 import json
@@ -10,8 +11,8 @@ import seaborn as sns
 import pandas as pd
 
 def create_multi_distribution_plot(all_data, start_idx, end_idx, filename):
-    fig, axes = plt.subplots(3, 5, figsize=(25, 15)) 
-    axes = axes.ravel()  
+    fig, axes = plt.subplots(3, 5, figsize=(25, 15))
+    axes = axes.ravel()
     
     for idx, (skill_idx, data) in enumerate(list(all_data.items())[start_idx:end_idx]):
         ax = axes[idx]
@@ -39,20 +40,15 @@ def create_multi_distribution_plot(all_data, start_idx, end_idx, filename):
     plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()
 
-def analyze_similarities_by_set():
-    load_dotenv()
-    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-    PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
+def analyze_similarities_by_set(args):
+    client = OpenAI(api_key=args.openai_api_key)
+    pc = Pinecone(api_key=args.pinecone_api_key)
+    index = pc.Index(args.index_name)
     
-    client = OpenAI(api_key=OPENAI_API_KEY)
-    pc = Pinecone(api_key=PINECONE_API_KEY)
-    index = pc.Index("rfp")
-    namespace = "openai-no-chunk"
+    data = load_jsonl(args.data_path)
+    skill_sets = load_jsonl(args.skill_sets_path)
     
-    data = load_jsonl("datasets/data.jsonl")
-    skill_sets = load_jsonl("datasets/test_skill_sets.jsonl")
-    
-    os.makedirs('score_distributions', exist_ok=True)
+    os.makedirs(args.output_dir, exist_ok=True)
     
     all_distributions = {}
     
@@ -61,7 +57,7 @@ def analyze_similarities_by_set():
         skills = skill_set['text']
         
         try:
-            retrieved_docs = retrieve_top_k_similar_docs(skills, index, namespace, k=len(data))
+            retrieved_docs = retrieve_top_k_similar_docs(skills, index, args.namespace, k=len(data))
             for doc in retrieved_docs:
                 scores.append({
                     'rfp_id': data[int(doc['id'])]['postingId'],
@@ -74,7 +70,9 @@ def analyze_similarities_by_set():
             }
             
             df = pd.DataFrame(scores)
-            with open(f'score_distributions/skill_set_{idx}_stats.txt', 'w') as f:
+            stats_path = os.path.join(args.output_dir, f'skill_set_{idx}_stats.txt')
+            
+            with open(stats_path, 'w') as f:
                 f.write(f"Skill Set {idx} Statistics:\n")
                 f.write(f"Skills: {skills}\n\n")
                 f.write(f"Mean: {df['similarity_score'].mean():.4f}\n")
@@ -84,11 +82,43 @@ def analyze_similarities_by_set():
                 f.write(f"Max: {df['similarity_score'].max():.4f}\n")
                 
         except Exception as e:
-            print(f"处理skill set {idx}时出错: {str(e)}")
+            print(f"Error processing skill set {idx}: {str(e)}")
             continue
     
-    create_multi_distribution_plot(all_distributions, 0, 15, 'score_distributions/distributions_1_15.png')
-    create_multi_distribution_plot(all_distributions, 15, 30, 'score_distributions/distributions_16_30.png')
+    # Create distribution plots
+    plot_path_1 = os.path.join(args.output_dir, 'distributions_1_15.png')
+    plot_path_2 = os.path.join(args.output_dir, 'distributions_16_30.png')
+    
+    create_multi_distribution_plot(all_distributions, 0, 15, plot_path_1)
+    create_multi_distribution_plot(all_distributions, 15, 30, plot_path_2)
+
+def main():
+    parser = argparse.ArgumentParser()
+    
+    # Data paths
+    parser.add_argument('--data_path', type=str, default='datasets/data.jsonl',
+                      help='Path to RFP data file')
+    parser.add_argument('--skill_sets_path', type=str, default='datasets/test_skill_sets.jsonl',
+                      help='Path to skill sets file')
+    
+    # Pinecone settings
+    parser.add_argument('--index_name', type=str, default='rfp',
+                      help='Name of Pinecone index')
+    parser.add_argument('--namespace', type=str, default='openai-no-chunk',
+                      help='Namespace in Pinecone index')
+    
+    # Output settings
+    parser.add_argument('--output_dir', type=str, default='../../results/score_distributions',
+                      help='Directory to save output files')
+    
+    args = parser.parse_args()
+    
+    # Load API keys from environment
+    load_dotenv()
+    args.openai_api_key = os.environ.get("OPENAI_API_KEY")
+    args.pinecone_api_key = os.environ.get("PINECONE_API_KEY")
+    
+    analyze_similarities_by_set(args)
 
 if __name__ == "__main__":
-    analyze_similarities_by_set()
+    main()

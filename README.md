@@ -25,7 +25,7 @@ pip install -r requirements.txt
 - Extracts data from Supabase database
 - Consolidates information into a single JSONL file
 ```bash
-python extract_data.py
+python extract_data.py --output_path ../../datasets/data.jsonl
 ```
 
 ### 2. Vector Database Storage (`store_pinecone.py`)
@@ -34,7 +34,7 @@ python extract_data.py
 python store_pinecone.py \
 --index rfp \
 --namespace openai-no-chunk \
---jsonl_path datasets/data.jsonl
+--jsonl_path ../../datasets/data.jsonl
 ```
 
 ### 3. Similarity Scoring (`compare_sim_score.py`)
@@ -66,32 +66,65 @@ python store_pinecone.py \
 
 1. Extract Data:
 ```bash
-python extract_data.py
+python extract_data.py [arguments]
 ```
+
+Arguments:
+| Argument | Default | Description |
+|----------|---------|-------------|
+| --output_path | ../../datasets/data.jsonl | Path to save the extracted data |
+
 Extracts data from Supabase database and consolidates it into a JSONL file.
 
 2. (Optional) Filter Utility Industry RFPs:
 ```bash
-python utility_data.py
+python utility_data.py [arguments]
 ```
+
+Arguments:
+| Argument | Default | Description |
+|----------|---------|-------------|
+| --output_path | datasets/utility_rfps.jsonl | Path to save filtered utility RFPs |
+
 Optionally filter RFPs specific to the utility industry using OpenAI's GPT model.
 
 3. Store in Vector Database:
 ```bash
-python store_pinecone.py --index rfp --namespace openai-no-chunk --jsonl_path datasets/data.jsonl
+python store_pinecone.py [arguments]
 ```
-Uploads the processed data to Pinecone for vector search.
 
-Parameters:
-- `--index`: Name of the Pinecone index (default: "rfp")
-- `--namespace`: Namespace within the index (default: "openai-no-chunk")
-- `--jsonl_path`: Path to the input JSONL file (default: "datasets/data.jsonl")
+Arguments:
+| Argument | Default | Description |
+|----------|---------|-------------|
+| --index | rfp | Name of the Pinecone index |
+| --namespace | openai-no-chunk | Namespace within the index |
+| --jsonl_path | datasets/data.jsonl | Path to input JSONL file |
+
+Uploads the processed data to Pinecone for vector search.
 
 4. Run Inference:
 ```bash
-python inference.py
+python inference.py [arguments]
 ```
-Performs similarity matching to find relevant RFPs based on skill sets.
+
+Arguments:
+| Argument | Default | Description |
+|----------|---------|-------------|
+| --namespace | openai-no-chunk | Namespace within Pinecone index |
+| --index_name | rfp | Name of the Pinecone index |
+| --data_path | ../../datasets/utility_rfps.jsonl | Path to the RFP data file |
+| --skill_sets_path | ../../datasets/test_skill_sets.jsonl | Path to the skill sets file |
+| --output_matched_docs | ../../results/utest_matched_docs.txt | Path to save matched documents |
+| --output_match_scores | ../../results/utest_matchescores.txt | Path to save matching scores |
+| --top_k | 3 | Number of top matches to retrieve |
+
+The script will:
+- Load RFP data and skill sets from specified paths
+- Perform similarity matching using Pinecone
+- Generate two output files:
+  1. Detailed matches with descriptions
+  2. Summary of matching scores
+```
 
 ### Analysis Tools (Optional)
 
@@ -99,8 +132,18 @@ After running the core workflow, you can use these tools for analysis:
 
 5. Analyze Score Distributions:
 ```bash
-python similarity_score_distribution.py
+python analyze_similarity.py [arguments]
 ```
+
+Arguments:
+| Argument | Default | Description |
+|----------|---------|-------------|
+| --data_path | datasets/data.jsonl | Path to RFP data file |
+| --skill_sets_path | datasets/test_skill_sets.jsonl | Path to skill sets file |
+| --index_name | rfp | Name of Pinecone index |
+| --namespace | openai-no-chunk | Namespace in Pinecone index |
+| --output_dir | score_distributions | Directory to save output files |
+
 Generates visualizations and statistics showing the distribution of similarity scores for each skill set across all RFPs. This helps understand the overall matching patterns and identify potential thresholds.
 
 6. Compare Selected RFPs:
@@ -113,16 +156,26 @@ Calculates similarity scores for manually selected RFPs that are known to match 
 
 ```
 project-root/
-├── .env                              # Environment variables
-├── compare_sim_score.py             # Similarity calculation
-├── similarity_score_distribution.py  # Analysis visualization
-├── utility_data.py                  # Industry filtering
-├── extract_data.py                  # Data extraction
-├── store_pinecone.py               # Vector DB storage
-├── inference.py                    # Matching inference
-└── datasets/
-    ├── data.jsonl                  # Processed data
-    └── test_skill_sets.jsonl       # Test cases
+├── .env                           # Environment variables
+├── src/
+│   ├── core/                     # Core workflow scripts
+│   │   ├── extract_data.py      # Data extraction from Supabase
+│   │   ├── store_pinecone.py    # Vector DB storage
+│   │   ├── inference.py         # Main matching logic
+│   │   └── utility_data.py      # Optional utility industry filter
+│   │
+│   ├── analysis/                # Analysis tools
+│   │   ├── compare_sim_score.py        # Compare selected RFPs
+│   │   └── similarity_score_distribution.py  # Score distribution analysis
+│   │
+│   └── utils/                   # Shared utilities
+│       └── utils.py        
+│
+├── datasets/                    # Data storage
+│   └── test_skill_sets.jsonl   # Test cases
+│
+└── results/                    # Analysis outputs
+
 ```
 
 ## Configuration

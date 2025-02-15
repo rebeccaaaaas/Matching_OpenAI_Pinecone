@@ -1,5 +1,5 @@
 import os
-from utils import load_json, load_jsonl, get_embeddings_batch, format_to_vector_dict
+from utils.utils import load_json, load_jsonl, get_embeddings_batch, format_to_vector_dict
 from dotenv import load_dotenv
 from openai import OpenAI
 from pinecone import Pinecone
@@ -26,12 +26,12 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 parser = argparse.ArgumentParser(description="Store to pinecone")
 # Parse the data.jsonl file to prepare it for storage
 # Define the 'index' argument to specify the exact location in which the numerical vectors store in pinecone
-parser.add_argument('--index', type=str, required=True, help='index 명칭')
+parser.add_argument('--index', type=str, required=True, help='index')
 # Define the 'namespace' argument to group data within the same index
 # The outcomes could be separated into different groups within the same index
-parser.add_argument('--namespace', type=str, required=True, help='Namespace 명칭')
+parser.add_argument('--namespace', type=str, required=True, help='Namespace')
 # Define the 'jsonl_path' to specify the exact location of the file on your local computer
-parser.add_argument('--jsonl_path', type=str, required=True, help='jsonl 데이터 경로')
+parser.add_argument('--jsonl_path', type=str, required=True, help='jsonl')
 # Store command-line arguments defined in 'parser' into 'args'
 args = parser.parse_args()
 
