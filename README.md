@@ -55,7 +55,18 @@ python store_pinecone.py \
   - Standard deviations
   - Score distributions
 
-### 5. Utility Industry Filter (`utility_data.py`)
+### 5. Response Generation (`generate_responses.py`)
+- Performs integrated similarity matching using Pinecone vector database
+- Calculates similarity scores for all RFPs against skill sets
+- Sorts RFPs by similarity scores in descending order
+- Generates AI responses for top 10% highest-scoring RFPs using OpenAI's GPT model
+- Creates comprehensive CSV output with all RFP data, scores, and responses
+- Key functions:
+  - `calculate_similarity_scores()`: Performs similarity matching and scoring
+  - `generate_response()`: Creates tailored responses using predefined templates
+  - `create_rfp_dataframe()`: Consolidates all RFP data with scores
+
+### 6. Utility Industry Filter (`utility_data.py`)
 - Filters RFPs specific to the utility industry
 - Uses OpenAI's GPT-3.5-turbo for classification
 - Interfaces with Supabase for data storage
@@ -124,13 +135,30 @@ The script will:
 - Generate two output files:
   1. Detailed matches with descriptions
   2. Summary of matching scores
+
+5. Generate Responses for Top RFPs:
+```bash
+python generate_responses.py [arguments]
 ```
+
+Arguments:
+| Argument | Default | Description |
+|----------|---------|-------------|
+| --data_path | ../../datasets/data.jsonl | Path to RFP data file |
+| --skill_sets_path | ../../datasets/test_skill_sets.jsonl | Path to skill sets file |
+| --index_name | rfp | Name of the Pinecone index |
+| --namespace | openai-no-chunk | Namespace within the Pinecone index |
+| --output_csv | ../../results/rfp_responses.csv | Path to output CSV file |
+| --top_percentage | 0.1 | Percentage of top RFPs to generate responses for |
+| --delay | 3.0 | Delay between API calls in seconds |
+
+Performs similarity matching against skill sets, calculates scores for all RFPs, sorts them by relevance, and generates AI-powered responses for the highest-scoring opportunities. The output CSV contains all RFP data with similarity scores and responses for top performers.
 
 ### Analysis Tools (Optional)
 
 After running the core workflow, you can use these tools for analysis:
 
-5. Analyze Score Distributions:
+6. Analyze Score Distributions:
 ```bash
 python analyze_similarity.py [arguments]
 ```
@@ -146,7 +174,7 @@ Arguments:
 
 Generates visualizations and statistics showing the distribution of similarity scores for each skill set across all RFPs. This helps understand the overall matching patterns and identify potential thresholds.
 
-6. Compare Selected RFPs:
+7. Compare Selected RFPs:
 ```bash
 python compare_sim_score.py
 ```
@@ -162,6 +190,7 @@ project-root/
 │   │   ├── extract_data.py      # Data extraction from Supabase
 │   │   ├── store_pinecone.py    # Vector DB storage
 │   │   ├── inference.py         # Main matching logic
+│   │   ├── generate_responses.py # Response generation and CSV export
 │   │   └── utility_data.py      # Optional utility industry filter
 │   │
 │   ├── analysis/                # Analysis tools
@@ -200,10 +229,17 @@ SUPABASE_KEY=your_supabase_key
 - Score range: 0 to 1
 - Higher scores indicate better matches
 
+### Response Generation
+- Model: GPT-3.5-turbo for cost efficiency
+- Max tokens: 2000 per response
+- Temperature: 0.7 for balanced creativity and consistency
+- Includes retry logic and rate limiting
+
 ### Data Processing
 - Text truncation for API limits
 - JSON Lines (JSONL) format for data storage
 - Vectorized storage in Pinecone for efficient retrieval
+- CSV output for dashboard integration and analysis
 
 ## Dependencies
 
@@ -223,3 +259,6 @@ SUPABASE_KEY=your_supabase_key
 - Monitor Pinecone database usage and limits
 - Regular backup of Supabase data recommended
 - Check token usage when processing large RFPs
+- The response generation feature uses GPT-3.5-turbo for cost optimization
+- Consider adjusting the delay parameter if encountering rate limits
+- CSV output includes all RFP fields plus similarity scores and responses for comprehensive analysis
